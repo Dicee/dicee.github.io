@@ -1,4 +1,7 @@
-## Welcome to this Github page
+---
+layout: page
+title: About me
+---
 
 Hi, I'm [David Courtinot](https://www.linkedin.com/in/david-courtinot-74343593/), and I'm a software engineer with about 5.5 years of experience. Anyone who's ever worked with me would tell you I'm a fairly opiniated guy. That's what they would tell you in public. Behind closed doors, they'd probably tell you I'm a nightmare. I'm in fact just starting this page so that I can terrorize more people with my sermons about good development practices.
 
