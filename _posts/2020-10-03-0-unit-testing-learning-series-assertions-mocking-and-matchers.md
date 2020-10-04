@@ -60,7 +60,7 @@ assertThat(map, equalTo(ImmutableMap.of("hello", "world"));
 
 When it comes to mocking behaviour, the same principles apply: you want your mocks to be as precise as possible. I see many people
 using the `any()` argument matcher in Mockito, which means the test basically doesn't validate at all how the mocked class was called
-in order to trigger the mocked behaviour. A good mock is not only allowing to provide a desired output that the tested class requires
+in order to trigger the mocked behaviour. A good mock does not only allow to provide a desired output that the tested class requires
 to implement its functionality, it also validates that the correct inputs were provided to the mock. In production code, the provided
 input would obviously impact the output, therefore your mocks should also care about their inputs. As everything, there will be exceptions
 to this, but the default guideline is to start with the most accurate mocking/comparison possible, and downgrade to something less specific
@@ -86,7 +86,7 @@ the expectations, and any deviation of the behavior of the class compared to the
 verifications on mocks, e.g. in Mockito, `verify(myMock).myMethod(param1, param2)` allows to verify a method was called on a mock with given parameters. 
 In this case too, it's super important to make parameters as specific as possible, and not use `any()` just because it's less work to do so.
 
-#### Don't mock data classes.
+#### Don't mock data classes
 
 A more minor note about mocking, but interesting too. There are some classes that you probably almost never want to mock, and instead want to use "the real thing". Indeed, a
 mock will always be a less faithful simulation of a given class than the class itself. If a mock was a perfect simulation of a class, then it would be as complex as the class
@@ -101,6 +101,25 @@ There could be a few exceptions for objects that are complex to create, but a lo
   you simply used the data classes directly, all you'll need to do is compile the code or find all the usages of the constructor to know every call site that needs
   to be updated. Plus, that's a much more trivial update to perform than fixing a test with missing mocked values, which can cause non-obvious errors if `null` is a valid value
   for the getter, since the tested code will simply continue executing and explore unexpected branches.  
+  
+ #### Use strict mocks
+ 
+ In Mockito, strict mocks are mocks that will fail the test if they detect that they might have been misused in the test. For example, strict stubs won't allow you to mock methods 
+ that the test doesn't actually use, or will fail the test before it ends if the parameters of a mocked call are different from the expectation. In short, strict stubs allow you
+ to make a cleaner and more correct use of mocking, and help you make your tests more reliable. For more information, you can start [here](http://blog.mockito.org/2017/01/clean-tests-produce-clean-code-strict.html).
+ 
+ Here's how you'd use strict stubs in Mockito with JUnit5:
+ 
+ ```java
+// the default setting is Strictness.STRICT_STUBS if you do not specific anything.
+// Otherwise, you can specify a looser strictness, but only if you have *very* good
+// reasons. For JUnit4, use @RunWith(MockitoJUnitRunner.StrictStubs.class).
+@MockitoSettings // https://javadoc.io/static/org.mockito/mockito-junit-jupiter/3.2.4/org/mockito/junit/jupiter/MockitoSettings.html
+public class MyTest {
+    // will be automatically instantiated and configured as a strict mock
+    @Mock Function<String, String> mock;
+}
+```
     
 ### Use matchers    
     
@@ -136,11 +155,11 @@ already, so it makes sense to make a boolean assertion.
     
 #### Custom matchers    
 
-In some cases, you'll benefit from defining your own matchers. I've had the case in one of the teams I've worked with, where we had a large amount of geometry logic. This can be tough to test
+In some cases, you'll benefit from defining your own matchers. I've had the case in one of the teams I've worked in, where we had a large amount of geometry logic. This can be tough to test
 due to rounding errors, so that's one case where exact equality isn't generally possible. You can do your best to select inputs that are going to generate integer results for all geometry operations,
 but sometimes the geometry is just too complicated to allow this. 
 
-As a result, that's a kind of code I was seeing a lot in our codebase:
+As a result, that's the kind of code I was seeing a lot in our codebase:
 
 ```java
 assertEquals(expectedLat, position.getLat(), precision);

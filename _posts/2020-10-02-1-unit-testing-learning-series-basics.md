@@ -29,6 +29,29 @@ Of course, this initial test should also be written with all the good practices 
 That's what I call *writing the code you want others to write.* The more people will see certain patterns in the codebase, or be reminded of it in a code review, the more likely they will
 follow the pattern the next time it is relevant, and so on until the pattern becomes a norm.
 
+### Good test names
+
+Naming is one of the first things that make good code. This is true of any name in your code: package, class, method, variable, anything. Good names make it easier to predict what
+a piece of code will do or what it means before even reading it. In the case of test cases, it also helps building a mental representation of the covered cases when names are adequately
+chosen. I've seen a test where the *exact same code* had been duplicated 3 times in methods with different names, and nobody had noticed. I discovered it by reading the tests carefully
+to figure out what they did, and rename them in a more structured manner (they were written as an impossibly long camelCase sentence). Just by doing the rename, I found that several methods
+now had the same name, and then compared their code to confirm they were doing rigorously the same thing, with the same code.
+
+Now, there are several styles for test case naming and I don't claim I hold the absolute truth, but here's one possible convention:
+ `testMethodName_inputDetail[_expectedResult]` where `inputDetail` is of the form `caseFoo_subCaseBar_etc`. This has the following advantages:
+ 
+- a simple glance at the test's name makes it easy to guess what it's expected to do
+- it brings structure among the tests by allowing to organise them with a folder-like hierarchy (e.g. : `testMethodA_caseX_subcaseY`)
+- because of the above, it is easy to check that all code paths have their corresponding test, since code paths are also typically organized in a tree hierarchy.
+
+Note that I generally omit `expectedResult` because I believe that if a test case is properly written, it will be easy to see what it expects. I prefer the name to focus on what case
+it's testing rather than what the expected outcome is, especially since this might change over time. Some example of names following this convention:
+- `testJsonParser_nullableField_null`
+- `testJsonParser_nullableField_nonNull`
+- `testJsonParser_requiredField_null`
+- `testJsonParser_nullableField_null_shouldThrowValidationException` (same as above but with an explicit `expectedResult`. Up to you whether you want to have it or not!)
+- `testJsonParser_requiredField_nonNull`
+
 ### Test content and structure 
 
 - **All happy and non-happy cases should be tested.**
@@ -38,7 +61,7 @@ follow the pattern the next time it is relevant, and so on until the pattern bec
    - if the API returns a value, compare this full value with an expected result. If the API is a void method, some mock verification may be done to verify side-effects that were expected
     did occur.
 - Tests should typically **NOT** do the following:
-   - verify methods were called on mocks for operations which have no side-effect (this would mean testing some implementation details rather than the high-level behaviour)
+   - verify methods were called on mocks for operations which have no side effect (this would mean testing some implementation details rather than the high-level behaviour)
    - verify that methods were called in a certain order if this order is not relevant to the high-level behaviour (it's almost never relevant!)
    - expose private members or methods as package-private for the purpose of testing. This is generally done because the class to test is not testable, which is a design flaw in itself.
     Testing internals doesn't guarantee the behaviour of the public API (which is what matters to production code) since there is no guarantee these internals are ever called in 
