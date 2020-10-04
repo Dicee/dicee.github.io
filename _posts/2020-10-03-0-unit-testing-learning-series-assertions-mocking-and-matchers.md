@@ -102,7 +102,7 @@ There could be a few exceptions for objects that are complex to create, but a lo
   to be updated. Plus, that's a much more trivial update to perform than fixing a test with missing mocked values, which can cause non-obvious errors if `null` is a valid value
   for the getter, since the tested code will simply continue executing and explore unexpected branches.  
   
- #### Use strict mocks
+#### Use strict mocks
  
  In Mockito, strict mocks are mocks that will fail the test if they detect that they might have been misused in the test. For example, strict stubs won't allow you to mock methods 
  that the test doesn't actually use, or will fail the test before it ends if the parameters of a mocked call are different from the expectation. In short, strict stubs allow you
