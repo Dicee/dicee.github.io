@@ -80,14 +80,95 @@ private void assertCorrectMeasurements(Duration expectedAvgCollectionTime, long 
 }
 ```
 
+**Example of shared test case template**
+```java
+// those three tests become trivially small by sharing a test template, and 
+// dozen of those can easily be added afterwards. If the base method was duplicated,
+// the test would be gigantic and each test case would tune the behaviour in slightly
+// different ways, making safe refactors extremely difficult.
+@Test
+public void testErrorTranslation_runtimeException() {
+    assertExceptionCorrectlyHandled(
+        new IllegalArgumentException(MESSAGE), 
+        InternalServerError.class,
+        Level.ERROR
+    );
+}
+
+@Test
+public void testErrorTranslation_awsException_500() {
+    assertExceptionCorrectlyHandled(
+        newAwsSdkException(MESSAGE, StatusCode.INTERNAL_SERVER_ERROR), 
+        DependencyException.class, 
+        Level.WARN
+    );
+}
+
+@Test
+public void testErrorTranslation_authException() {
+    // other tests use a default value for the published error metric,
+    // but here the system customizes the name of the published metric 
+    // for authentication failures
+    assertExceptionCorrectlyHandled(
+        new UnauthorizedException(MESSAGE),
+         InternalServerError.class,
+         Level.ERROR, 
+         "auth.errors.count"
+    );
+}
+
+
+private void assertExceptionCorrectlyHandled(
+        RuntimeException originalException, 
+        Class<? extends RuntimeException> expectedExceptionType,
+        Level expectedLogLevel) {
+    assertExceptionCorrectlyHandled(originalException, expectedExceptionType, 
+        expectedLogLevel, originalException.getClass().getSimpleName());
+}
+
+// this tests that GetDocumentRequestHandler.handle correctly translates exceptions 
+// from DocumentStore.getDocument in order to generate accurate exceptions and status 
+// codes to customers. It also checks that specific test was logged out with the correct
+// log level, and   that the correct metrics were published. 
+private void assertExceptionCorrectlyHandled(
+        RuntimeException originalException, 
+        Class<? extends RuntimeException> expectedExceptionType,
+        Level expectedLogLevel, 
+        String expectedMetricName) {
+
+    when(documentStore.getDocument(DOCUMENT_ID)).thenThrow(originalException);
+    Exception e = assertThrows(expectedExceptionType, 
+        () -> requestHandler.handle(newGetDocumentRequest(DOCUMENT_ID)));
+
+    boolean expectWrapped = !originalException.getClass().equals(expectedExceptionType);
+    assertThat(e, expectWrapped ? hasCause(is(originalException)) : is(originalException));
+
+    String messagePrefix = expectWrapped ? originalException.getClass().getName() + ": " : "";
+    assertThat(e, hasMessage(equalTo(messagePrefix + MESSAGE)));
+
+    String originalExceptionName = originalException.getClass().getSimpleName();
+    verify(metricReporter).reportFailure("GetDocument", expectedMetricName);
+    verifyNoMoreInteractions(metricReporter);
+
+    assertThat(recordingAppender.getEvents(), equalTo(ImmutableList.of(
+            SimpleLogEvent.forClass(GetDocumentRequestHandler.class, INFO, "GetDocument called with parameter foo"),
+            SimpleLogEvent.forClass(GetDocumentRequestHandler.class, expectedLogLevel, 
+                "GetDocumentRequest failed with " + originalExceptionName + " for input foo")
+    )));
+}
+```
+
 **Example of test helper class**
 ```java
 /**
- * An appender which stores all the events appended to it. Useful for testing what was logged by a class.
+ * An appender which stores all the events appended to it, in order to test
+ * what was logged by a class (example usage in the previous snippet). This
+ * type of test utils can be reused in many different tests to make them
+ * easier to write and more concise.
  */
 public class RecordingAppender extends AbstractAppender {
     public static RecordingAppender attachedToRootLogger() {
-        final RecordingAppender recordingAppender = new RecordingAppender();
+        RecordingAppender recordingAppender = new RecordingAppender();
         getRootLogger().addAppender(recordingAppender);
         recordingAppender.start();
         return recordingAppender;
@@ -100,7 +181,7 @@ public class RecordingAppender extends AbstractAppender {
     }
 
     @Override
-    public void append(final LogEvent event) {
+    public void append(LogEvent event) {
         events.add(SimpleLogEvent.from(event));
     }
 
@@ -122,68 +203,40 @@ public class RecordingAppender extends AbstractAppender {
 }
 ```
 
-**Example of shared test case template**
-```java
-// those two tests (or more) become trivially small by sharing a test template, and 
-// dozen of those can easily be added afterwards. If the base method was duplicated,
-// the test would be gigantic and each test case would tune the behaviour in slightly
-// different ways, making safe refactors extremely difficult.
-@Test
-public void testFailure_customConfiguration_ambiguous_firstMatches() {
-    assertExceptionCorrectlyHandled(new CustomIllegalArgumentException(MESSAGE), TranslatedCustomIllegalArgumentException.class, WARN);
-}
-
-@Test
-public void testFailure_customConfiguration_ambiguous_onlySecondMatches() {
-    assertExceptionCorrectlyHandled(new IllegalArgumentException(MESSAGE), RuntimeException.class, WARN);
-}
-
-private void assertExceptionCorrectlyHandled(
-        RuntimeException originalException, Class<? extends RuntimeException> expectedExceptionType,
-        Level expectedLogLevel) {
-    assertExceptionCorrectlyHandled(originalException, expectedExceptionType, expectedLogLevel, originalException.getClass().getSimpleName());
-}
-
-private void assertExceptionCorrectlyHandled(
-        RuntimeException originalException, Class<? extends RuntimeException> expectedExceptionType,
-        Level expectedLogLevel, String expectedMetricName) {
-    Exception e = assertThrows(expectedExceptionType, () -> CoralActivityTemplate.invoke(FakeActivity.class,
-                    metricReporter, MODELED_EXCEPTIONS, CONFIG, "foo", input -> { throw originalException; }));
-
-    boolean expectWrapped = !originalException.getClass().equals(expectedExceptionType);
-    assertThat(e, expectWrapped ? hasCause(is(originalException)) : is(originalException));
-
-    String messagePrefix = expectWrapped ? originalException.getClass().getName() + ": " : "";
-    assertThat(e, hasMessage(equalTo(messagePrefix + MESSAGE)));
-
-    String originalExceptionName = originalException.getClass().getSimpleName();
-    verify(metricReporter).reportFailure("FakeActivity", expectedMetricName);
-    verifyZeroInteractions(metricReporter);
-
-    assertThat(recordingAppender.getEvents(), equalTo(ImmutableList.of(
-            SimpleLogEvent.forClass(FakeActivity.class, INFO, "Called with parameter foo"),
-            SimpleLogEvent.forClass(FakeActivity.class, expectedLogLevel, "FakeActivity failed with " + originalExceptionName + " for input foo")
-    )));
-}
-```
-
 **Example of dummy object construction helper**
 ```java
-// here there are 5 fields, many of which are themselves composite classes, but we 
-// only care to set one of them for the purpose of the test. Hence, why should we 
-// have to read the rest of the initialization that doesn't matter for the test?
-private static WeatherStationMeasurement dummyStationMeasurement(String uacId) {
-    return WeatherStationMeasurement.builder()
-            .weatherStationId(new WeatherStationId(uacId, STATION_ID, "sensor"))
-            .sensorPosition(new Point3D(0, 0, 0))
-            .timestampUnixMillis(CLOCK.millis())
-            .windAverageMetersPerSecond(ORIGINAL_WIND)
-            .windGustMetersPerSecond(ORIGINAL_GUST)
+@Test
+void testFilterByType() {
+    // mocks the underlying document store
+    setupDocumentStore(ImmutableList.of(
+        newDocument("id1", DocumentType.PHONE_BILL),
+        newDocument("id2", DocumentType.QUOTE),
+        newDocument("id3", DocumentType.BANK_STATEMENT),
+        newDocument("id4", DocumentType.ELECTRICITY_BILL),
+        newDocument("id5", DocumentType.PHONE_BILL)
+    ));
+    assertThat(docStoreClient.filterByType(DocumentType.PHONE_BILL), equalTo(ImmutableList.of(
+         newDocument("id1", DocumentType.PHONE_BILL),
+         newDocument("id5", DocumentType.PHONE_BILL)
+     )));
+}
+
+// here there are 5 fields, but we only care to set one of them for the purpose of
+// the test. Hence, why should we have to read the rest of the initialization that
+// doesn't matter for the test? This method allows tests to be much more concise 
+// and focus on the tested functionality.
+private static Document newDocument(String documentVersionId, DocumentType documentType) {
+    return Document.builder()
+            .withId(documentId)
+            .withType(documentType)
+            .withFormat(DocumentFormat.XML)
+            .withPermissionGroup(PermissionGroup.ADMIN)
+            .withEncryptionType(EncryptionType.UNENCRYPTED)
             .build();
 }
 ```
 
-Anyway, you get the idea. Anything that can be done do to make production clear and readable can and should also be applied
+Anyway, you get the idea. Anything that can be done to make production clear and readable can and should also be applied
 to unit tests. Short, well-factored unit tests exempt of duplication will make it much easier to add new tests and reason about
 coverage (if it's difficult to understand what a test does, it's difficult to know what is or isn't tested). There are many more
-topics to discuss about, but hopefully this first pass will be helpful to some people. 
+topics to discuss, but hopefully this first pass will be helpful to some people. 
