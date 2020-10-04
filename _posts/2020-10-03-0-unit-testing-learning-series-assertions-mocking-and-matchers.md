@@ -120,6 +120,14 @@ public class MyTest {
     @Mock Function<String, String> mock;
 }
 ```
+
+#### Test classes in isolation
+
+That's more or less the definition of unit tests, so I'll go quickly. Complex dependencies of your class should be stubbed or mocked in order to limit the number of things to test.
+Say you have a class `A` implementing rather complex functionality, and another class `B` that uses it to implement higher-level features. `B` is at least as complex as 
+`A` since it calls its methods. Now if `C` calls methods defined by `B`, you have an even more complex class to test. This telescoping complexity can become unmanageable and badly
+damage your ability to write concise tests that cover all cases. By mocking `A` when testing `B`, and mocking `B` when testing `C`, you can isolate these classes from one another
+in tests, so that only the incremental functionality added by a given class is tested, and not the end-to-end functionality. 
     
 ### Use matchers    
     
