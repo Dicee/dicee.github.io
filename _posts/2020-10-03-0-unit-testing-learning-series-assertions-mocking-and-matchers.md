@@ -264,4 +264,59 @@ private static Function<Double, Matcher<? super Double>> closeToDouble(double ep
 I won't share this as an example, if you're interested in building a nice `CompositeMatcher`, it can be a good exercise. Regarding mocks, Mockito also allows 
 writing custom matchers to use both for mocking behavior and making verifications. The interface to implement would be `org.mockito.ArgumentMatcher`.
 
+#### Testing error handling
+
+Another nice application of matchers and/or deep comparisons is for testing error handling. If some exceptions of your application contained detailed messages that are
+being propagated up to your clients, it can be important to validate not only that an exception with the correct type is thrown, but also that the message of the exception
+is what you expected, or even that the exception has the expected parent exception (root cause), as the stracktrace of your top-level exception can greatly improve debugging
+capabilities, or hinder it if sme exceptions deep in your code were swallowed. With JUnit5, I use the following methods:
+
+```java
+ public static <E extends Exception> E assertThrowsExceptionLike(final E expected, final Executable executable) {
+    return assertThrows((Class<E>) expected.getClass(), is(throwableLike(expected)), executable);
+}
+
+public static <E extends Exception> E assertThrowsWithMessage(
+        final Class<E> exceptionType, final String message,
+        final Executable executable) {
+    return assertThrowsWithMessage(exceptionType, equalTo(message), executable);
+}
+
+public static <E extends Exception> E assertThrows(
+        final Class<E> exceptionType, final Matcher<? super Exception> matcher,
+        final Executable executable) {
+
+    E actual = Assertions.assertThrows(exceptionType, executable);
+    assertThat(actual, matcher);
+    return actual;
+}
+
+public static Matcher<Throwable> throwableLike(final Throwable expected) {
+    ImmutableList.Builder<Matcher<? super Throwable>> matchers = ImmutableList.builder();
+
+    matchers.add(instanceOf(expected.getClass()));
+    // I won't include the code of hasMessage and hasCause to avoid putting 
+    // too much code in this post, but essentially I copied them from JUnit4
+    matchers.add(hasMessage(equalTo(expected.getMessage())));
+    if (expected.getCause() != null) matchers.add(hasCause(throwableLike(expected.getCause())));
+
+    return Matchers.allOf(matchers.build());
+}
+
+// example usages
+assertThrowsExceptionLike(new ObjectNotFoundException("Object with id 'testId' was not found"), () -> getObject("testId"));
+assertThrowsWithMessage(
+    InvalidInputException.class, 
+    // sometimes, it's hard to test the whole message, and using a matcher 
+    // (even a regex matcher!) can be more practical
+    startsWith("Invalid value for field 'address':"), 
+    () -> whatever()
+);
+``` 
+
+In my opinion, it's important to test error messages in two cases:
+- when they are customer-facing
+- when the exception thrown is very generic (e.g. `IllegalArgumentException`) and might be thrown for a variety of reasons. Checking the message allows being
+  more confident that the exception was thrown for exactlyn the reason you predicted.
+
 That closes this chapter about assertions, I hope this convinced you to give you and your team all the tools to allow your assertions and mocks to be as specific as possible.
