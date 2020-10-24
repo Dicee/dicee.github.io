@@ -79,7 +79,7 @@ public abstract class BaseAirplaneTest {
 ```
 
 Note that none of this *requires* a base class: 
-- for the shared data, you could just a utility class with constants
+- for the shared data, you could just have a utility class with constants
 - for some setup and cleanup steps, you might use rules or extensions
 - for mocks, this could be encapsulated in one or more utility classes
 
