@@ -30,7 +30,7 @@ One possible way of classifying duplication types is the following (at least tha
 at least one of the duplicated bits. Logic duplication is unacceptable in most instances, and even when it looks acceptable ("temporary" migration), it is strongly discouraged because 
 in real life, "temporary" often turns into "forever". Trust me, I've seen this happen countless times with people full of good intentions and motivation, including myself. Things don't
 always go as planned so we should not make over-optimistic assumptions, and ensure our system is always in a pretty good shape.
-- *Business duplication* harms in all the ways code duplication does, except that the type of correctness breaches it causes are generally worse, because it directly leads to violating
+- *Business logic duplication* harms in all the ways logic duplication does, except that the type of correctness breaches it causes are generally worse, because it directly leads to violating
  a business requirement. Business duplication is as unacceptable as logic duplication, and when it does happen it requires even stronger justifications (e.g. very high cost to not 
  duplicating).
  
