@@ -97,6 +97,11 @@ truth is that most applications in the work are not high-performance application
 or a handful of milliseconds for very fast services. There are only a few domains like image processing, bioinformatics, physics simulations etc, where you actually need to optimize to a 
 ridiculous degree because one microsecond on an operation executed billions of times can still save you a lot of time and money. For most other applications, simplicity, safety and ease
 of development are much more important factors than raw performance.
+
+----
+
+That was quite a bit of information! By now, you're hopefully on board with the idea of using immutable structures as much as you can in your code. But how can we promote this in our code
+and what does it mean, in practice, to write immutable code? That's the topic of the [second part](/2021-01-28-2-immutability-part-2) of this post.
     
 # References
     
