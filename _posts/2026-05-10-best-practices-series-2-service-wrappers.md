@@ -11,7 +11,7 @@ comments: true
 ---
 
 When you go out in winter, do you walk around naked in the streets, flaunting whatever attributes nature endowed you with to all passerby? No? Well, it's the same with your service dependencies.
-Ok maybe it's not quite the same, but I thought it was a catchy introduction.
+Ok maybe not quite the same, but I thought it was a catchy introduction.
 
 First, let's clarify what I mean by a (service) dependency. If service A calls service B, then B is a dependency of A. I'm thus talking about dependencies in your architecture such as APIs, databases etc, not libraries.
 Generally, a service dependency executes in a different environment than your service: different container at least, or entirely different infrastructure. Any time you have such a setup, you will need to make network calls
@@ -32,7 +32,7 @@ There are numerous advantages to doing this:
 - not always, but can be useful to convert the external data model to the internal one. It can help isolating your business logic from the data model of the dependencies and make migration easier if you swap between two contract versions of the same service, or migrate to another service entirely. 
 - provides a single place to change the way all calls to the external sites are made, rather than having to refactor all call sites. For example, in the case of a new parameter being added to the API.
 
- ### How should they be wrapped? 
+### How should they be wrapped? 
 
 I'll start with a quick example of service wrapper for S3.
 

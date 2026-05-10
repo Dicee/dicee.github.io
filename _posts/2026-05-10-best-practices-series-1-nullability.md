@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Best practices series - part 1: nullability"
-subtitle: Never face a `NullPointerException` ever again with simple guidelines
+subtitle: Never face a NullPointerException ever again with simple guidelines
 tags: [best-practices-series, java, kotlin, scala, typescript, good-practices]
 comments: true
 ---
